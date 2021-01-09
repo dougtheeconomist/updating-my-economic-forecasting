@@ -1,9 +1,14 @@
 # Author: Doug Hart
+# Title: Cleaing data
 # Project: Economic Forecasting
 # Date Created: 1/3/2021
-# Last Updated: 1/3/2021
+# Last Updated: 1/9/2021
 
 import pandas as pd
+import datetime
+
+
+
 def pc_transform(df, srs=str,new=str):
     '''
     Creates new series in dataframe which takes values of percentage change from previous period in
@@ -33,3 +38,16 @@ pc_transform(df, 'C', 'pcC')
 pc_transform(df, 'I', 'pcI')
 pc_transform(df, 'ip_index', 'pcipi')
 # s&p500 variable is already in percentage change form
+
+'''~~~~~~~~~~~~~~~Creating dt formatted date column~~~~~~~~~~~~~~~'''
+
+df['date'] = None
+for i in range(df.shape[0]):
+    df.date[i] = datetime.date(df.year[i],df.month[i],1)
+
+# To set this var to the df index
+df.index = pd.DatetimeIndex(df.date)
+df.drop('date',axis=1, inplace = True)
+
+# Useful for viewing all columns in notebook
+pd.set_option('display.max_columns', 40)
