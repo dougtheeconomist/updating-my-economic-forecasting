@@ -55,7 +55,7 @@ results.plot_forecast(6)
 # Will want to implement own custom graphing function for variables of interest
 # like with housing forecasting Deep Learning model
 
-def get_calibration_results(df, n_results):
+def get_calibration_data(df, n_results):
     '''
     Runs VAR code and saves resulting predictions to lists, then drops most recent row of data and repeats n_results 
     times. Coded for save calibration data for 6 period forecast. 
@@ -137,3 +137,40 @@ def get_calibration_results(df, n_results):
                columns =['p1p', 'p2p', 'p3p', 'p4p', 'p5p', 'p6p', 'p1l', 'p2l', 'p3l', 'p4l', 'p5l', 'p6l', 'p1u', 'p2u', 'p3u', 'p4u', 'p5u', 'p6u'],index=df.index[-n_results:])
     out['actual'] = df['pcgdp'][-n_results:]
     return out
+
+def calibration_check(actual,upper,lower, bias_as_percent=False):
+    '''
+    To find how frequently true value falls within projected range
+    Inputs:
+        actual: historic values for comparison, series
+        upper: upper bounds of interval forecast, series or list
+        lower: lower bounds of interval forecast, series or list
+    Outputs:
+        calibration: count of times actual falls within interval divided by n
+        bias: Indicates direction of bias in the event that the predictions are 
+            consistently high or low.
+            Returns times number of times actual exceeded upper bounds less the
+            number of times actual fell below lower bounds. If equal to zero, any errors 
+            are equally spread above and below target range. If bias_as_percent set to True;
+            bias will be reported as a ratio to n, or the number of predicted values for comparison. 
+    Options:
+        bias_as_percent: Defaults to False, if true bias will be reported as ratio of bias to n 
+    '''
+    n = len(actual)
+    count = 0
+    bias = 0
+    for i in range(len(actual)):
+        if upper[i] >= actual[i] >= lower[i]:
+            count += 1
+        elif upper[i] < actual[i]:
+            bias += 1
+        elif actual[i] < lower[i]:
+            bias -= 1
+    calibration = count / n
+    if bias_as_percent == True:
+        return calibration, bias/n
+    else:
+        return calibration, bias
+
+
+
