@@ -65,6 +65,13 @@ def get_calibration_data(df, n_results):
     
     '''
     dfc = pd.DataFrame(df,copy=True)
+    mdata = dfc[['pcgdp','mancap','unem','pctot','pcbusinv','pcC','pcI','pcipi','pcsp500']]
+
+    dates = dfc[['year', 'month']].astype(int).astype(str)
+    dates.reset_index(inplace=True,drop=True)
+    monthly = dates['year'] + "M" + dates['month']
+    monthly = dates_from_str(monthly)
+    mdata.index = pd.DatetimeIndex(monthly)
     fm1 = []
     fm2 = []
     fm3 = []
@@ -87,8 +94,14 @@ def get_calibration_data(df, n_results):
     lm6 = []
     
     for i in range((n_results+5)):
-        dfc.drop(dfc.tail(1).index,inplace=True)
-        maw = VAR(dfc, freq='m')
+        mdata.drop(mdata.tail(1).index,inplace=True)
+        maw = VAR(mdata, freq='m')
+        results = maw.fit(6)
+        lag_order = results.k_ar
+        
+        point_fcast = results.forecast_interval(mdata.values[-lag_order:], 6)[0]
+        lower_bounds = results.forecast_interval(mdata.values[-lag_order:], 6)[1]
+        upper_bounds = results.forecast_interval(mdata.values[-lag_order:], 6)[2]
 
         fm1.insert(0,point_fcast[0][0])
         fm2.insert(0,point_fcast[1][0])
@@ -116,7 +129,7 @@ def get_calibration_data(df, n_results):
     fm2 = fm2[1:-4]
     fm3 = fm3[2:-3]
     fm4 = fm4[3:-2]
-    fm5 = fm5[4:-2]
+    fm5 = fm5[4:-1]
     fm6 = fm6[5:]
 
     um1 = um1[:-5]
@@ -173,4 +186,12 @@ def calibration_check(actual,upper,lower, bias_as_percent=False):
         return calibration, bias
 
 
+def report_calibration(df,n):
+    report_list = [get_calibration_results(df,n)]
+    print('Month One Calibration: ', calibration_check(report_list[0],report_list[6] ,report_list[12]))
+    print('Month Two Calibration: ', calibration_check(report_list[1],report_list[7] ,report_list[13]))
+    print('Month Three Calibration: ', calibration_check(report_list[2],report_list[8] ,report_list[14]))
+    print('Month Four Calibration: ', calibration_check(report_list[3],report_list[9] ,report_list[15]))
+    print('Month Five Calibration: ', calibration_check(report_list[4],report_list[10] ,report_list[16]))
+    print('Month Six Calibration: ', calibration_check(report_list[5],report_list[11] ,report_list[17]))
 
