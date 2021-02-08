@@ -196,10 +196,17 @@ def calibration_check(actual,upper,lower, bias_as_percent=False):
 #     print('Month Six Calibration: ', calibration_check(report_list[5],report_list[11] ,report_list[17]))
 
 def report_calibration(df,n):
-    report_list = [get_calibration_results(df,n)]
-    print('Month One Calibration: ', calibration_check(report_list.fm1, report_list.lm1, report_list.um1))
-    print('Month Two Calibration: ', calibration_check(report_list.fm2, report_list.lm2, report_list.um2))
-    print('Month Three Calibration: ', calibration_check(report_list.fm3, report_list.lm3, report_list.um3))
-    print('Month Four Calibration: ', calibration_check(report_list.fm4, report_list.lm4, report_list.um4))
-    print('Month Five Calibration: ', calibration_check(report_list.fm5, report_list.lm5, report_list.um5))
-    print('Month Six Calibration: ', calibration_check(report_list.fm6, report_list.lm6, report_list.um6))
+    '''
+    Combines get_calibration_data and calibration_check functions 
+    for ease of use. Prints results for forecasts one to six months out
+    inputs:
+        df: dataframe containing data for modeling
+        n: number of forecasts of past periods to generate for comparison
+    '''
+    report_list = get_calibration_data(df,n)
+    print('Month One Calibration: ', calibration_check(report_list.p1p, report_list.p1l, report_list.p1u))
+    print('Month Two Calibration: ', calibration_check(report_list.p2p, report_list.p2l, report_list.p2u))
+    print('Month Three Calibration: ', calibration_check(report_list.p3p, report_list.p3l, report_list.p3u))
+    print('Month Four Calibration: ', calibration_check(report_list.p4p, report_list.p4l, report_list.p4u))
+    print('Month Five Calibration: ', calibration_check(report_list.p5p, report_list.p5l, report_list.p5u))
+    print('Month Six Calibration: ', calibration_check(report_list.p6p, report_list.p6l, report_list.p6u))
