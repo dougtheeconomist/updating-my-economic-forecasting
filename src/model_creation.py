@@ -2,7 +2,7 @@
 # Title: VAR creation
 # Project: Economic Forecasting
 # Date Created: 1/9/2021
-# Last Updated: 1/9/2021
+# Last Updated: 2/9/2021
 
 import pandas as pd
 import datetime
@@ -202,3 +202,15 @@ def report_calibration(df,n):
     print('Month Four Calibration: ', calibration_check(report_list.actual, report_list.p4l, report_list.p4u))
     print('Month Five Calibration: ', calibration_check(report_list.actual, report_list.p5l, report_list.p5u))
     print('Month Six Calibration: ', calibration_check(report_list.actual, report_list.p6l, report_list.p6u))
+
+
+'''
+Future work: need to reformat these functions to be able to take number of 
+periods to predict as an argument rather than be hardcoded to 6 periods out.
+Probably a fun weekend project.
+
+Less pressing functionality to add would be to allow selection of which variable
+to calibrate rather than assuming column in X matrix. 
+
+Once done could consider bundling as Class object.
+'''
