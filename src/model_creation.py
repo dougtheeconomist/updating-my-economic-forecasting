@@ -110,20 +110,20 @@ def get_calibration_data(df, n_results):
         fm5.insert(0,point_fcast[4][0])
         fm6.insert(0,point_fcast[5][0])
 
-        lm1.insert(0,point_fcast[0][1])
-        lm2.insert(0,point_fcast[1][1])
-        lm3.insert(0,point_fcast[2][1])
-        lm4.insert(0,point_fcast[3][1])
-        lm5.insert(0,point_fcast[4][1])
-        lm6.insert(0,point_fcast[5][1])
+        lm1.insert(0,lower_bounds[0][0])
+        lm2.insert(0,lower_bounds[1][0])
+        lm3.insert(0,lower_bounds[2][0])
+        lm4.insert(0,lower_bounds[3][0])
+        lm5.insert(0,lower_bounds[4][0])
+        lm6.insert(0,lower_bounds[5][0])
 
 
-        um1.insert(0,point_fcast[0][2])
-        um2.insert(0,point_fcast[1][2])
-        um3.insert(0,point_fcast[2][2])
-        um4.insert(0,point_fcast[3][2])
-        um5.insert(0,point_fcast[4][2])
-        um6.insert(0,point_fcast[5][2])
+        um1.insert(0,upper_bounds[0][0])
+        um2.insert(0,upper_bounds[1][0])
+        um3.insert(0,upper_bounds[2][0])
+        um4.insert(0,upper_bounds[3][0])
+        um5.insert(0,upper_bounds[4][0])
+        um6.insert(0,upper_bounds[5][0])
     # Then to trim lists to proper intervals
     fm1 = fm1[5:]
     fm2 = fm2[4:-1]
@@ -151,7 +151,7 @@ def get_calibration_data(df, n_results):
     out['actual'] = df['pcgdp'][-n_results:]
     return out
 
-def calibration_check(actual,upper,lower, bias_as_percent=False):
+def calibration_check(actual, lower, upper, bias_as_percent=False):
     '''
     To find how frequently true value falls within projected range
     Inputs:
