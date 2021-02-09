@@ -186,14 +186,6 @@ def calibration_check(actual, lower, upper, bias_as_percent=False):
         return calibration, bias
 
 
-# def report_calibration(df,n):
-#     report_list = [get_calibration_results(df,n)]
-#     print('Month One Calibration: ', calibration_check(report_list[0],report_list[6] ,report_list[12]))
-#     print('Month Two Calibration: ', calibration_check(report_list[1],report_list[7] ,report_list[13]))
-#     print('Month Three Calibration: ', calibration_check(report_list[2],report_list[8] ,report_list[14]))
-#     print('Month Four Calibration: ', calibration_check(report_list[3],report_list[9] ,report_list[15]))
-#     print('Month Five Calibration: ', calibration_check(report_list[4],report_list[10] ,report_list[16]))
-#     print('Month Six Calibration: ', calibration_check(report_list[5],report_list[11] ,report_list[17]))
 
 def report_calibration(df,n):
     '''
@@ -204,9 +196,9 @@ def report_calibration(df,n):
         n: number of forecasts of past periods to generate for comparison
     '''
     report_list = get_calibration_data(df,n)
-    print('Month One Calibration: ', calibration_check(report_list.p1p, report_list.p1l, report_list.p1u))
-    print('Month Two Calibration: ', calibration_check(report_list.p2p, report_list.p2l, report_list.p2u))
-    print('Month Three Calibration: ', calibration_check(report_list.p3p, report_list.p3l, report_list.p3u))
-    print('Month Four Calibration: ', calibration_check(report_list.p4p, report_list.p4l, report_list.p4u))
-    print('Month Five Calibration: ', calibration_check(report_list.p5p, report_list.p5l, report_list.p5u))
-    print('Month Six Calibration: ', calibration_check(report_list.p6p, report_list.p6l, report_list.p6u))
+    print('Month One Calibration: ', calibration_check(report_list.actual, report_list.p1l, report_list.p1u))
+    print('Month Two Calibration: ', calibration_check(report_list.actual, report_list.p2l, report_list.p2u))
+    print('Month Three Calibration: ', calibration_check(report_list.actual, report_list.p3l, report_list.p3u))
+    print('Month Four Calibration: ', calibration_check(report_list.actual, report_list.p4l, report_list.p4u))
+    print('Month Five Calibration: ', calibration_check(report_list.actual, report_list.p5l, report_list.p5u))
+    print('Month Six Calibration: ', calibration_check(report_list.actual, report_list.p6l, report_list.p6u))
