@@ -2,7 +2,7 @@
 # Title: VAR creation
 # Project: Economic Forecasting
 # Date Created: 1/9/2021
-# Last Updated: 2/9/2021
+# Last Updated: 2/11/2021
 
 import pandas as pd
 import datetime
@@ -214,3 +214,18 @@ to calibrate rather than assuming column in X matrix.
 
 Once done could consider bundling as Class object.
 '''
+
+
+'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~By Parts~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
+
+mdata2 = df[['C','I','G','net_exports','unem','meanprice','mancap','man_industelect','electtot']]
+dates = df[['year', 'month']].astype(int).astype(str)
+dates.reset_index(inplace=True,drop=True)
+monthly = dates['year'] + "M" + dates['month']
+monthly = dates_from_str(monthly)
+mdata2.index = pd.DatetimeIndex(monthly)
+maw2 = VAR(mdata2, freq='m')
+results2 = maw2.fit(6)
+
+# OR
+results2 = maw2.fit(maxlags=12, ic='bic')
