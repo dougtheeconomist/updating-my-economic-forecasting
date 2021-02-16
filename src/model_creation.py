@@ -2,9 +2,10 @@
 # Title: VAR creation
 # Project: Economic Forecasting
 # Date Created: 1/9/2021
-# Last Updated: 2/11/2021
+# Last Updated: 2/16/2021
 
 import pandas as pd
+import numpy as np
 import datetime
 
 import statsmodels.api as sm
@@ -186,6 +187,16 @@ def calibration_check(actual, lower, upper, bias_as_percent=False):
         return calibration, bias
 
 
+def mape_calc(df,actual = str,forecast = str):
+    '''
+    Calculates Mean Absolute Percentage Error of forecasted data from actual values
+    Args:
+        df: dataframe containing columns with data of interest
+        actual: column of actual target data for comparison, type = str
+        forecast: column of predicted future values, type = str
+    '''
+    mape = np.sum(np.abs((df[actual] - df[forecast]) / df[actual])) / len(df[actual])
+    return mape
 
 def report_calibration(df,n,bp=False):
     '''
@@ -203,12 +214,12 @@ def report_calibration(df,n,bp=False):
     elif bp == True:
         report_list = get_by_parts_calibration_data(df,n)
         
-    print('Month One Calibration: ', calibration_check(report_list.actual, report_list.p1l, report_list.p1u))
-    print('Month Two Calibration: ', calibration_check(report_list.actual, report_list.p2l, report_list.p2u))
-    print('Month Three Calibration: ', calibration_check(report_list.actual, report_list.p3l, report_list.p3u))
-    print('Month Four Calibration: ', calibration_check(report_list.actual, report_list.p4l, report_list.p4u))
-    print('Month Five Calibration: ', calibration_check(report_list.actual, report_list.p5l, report_list.p5u))
-    print('Month Six Calibration: ', calibration_check(report_list.actual, report_list.p6l, report_list.p6u))
+    print('Month One Calibration: ', calibration_check(report_list.actual, report_list.p1l, report_list.p1u),'MAPE: ',mape_calc(report_list,'actual','p1p'))
+    print('Month Two Calibration: ', calibration_check(report_list.actual, report_list.p2l, report_list.p2u),'MAPE: ',mape_calc(report_list,'actual','p2p'))
+    print('Month Three Calibration: ', calibration_check(report_list.actual, report_list.p3l, report_list.p3u),'MAPE: ',mape_calc(report_list,'actual','p3p'))
+    print('Month Four Calibration: ', calibration_check(report_list.actual, report_list.p4l, report_list.p4u),'MAPE: ',mape_calc(report_list,'actual','p4p'))
+    print('Month Five Calibration: ', calibration_check(report_list.actual, report_list.p5l, report_list.p5u),'MAPE: ',mape_calc(report_list,'actual','p5p'))
+    print('Month Six Calibration: ', calibration_check(report_list.actual, report_list.p6l, report_list.p6u),'MAPE: ',mape_calc(report_list,'actual','p6p'))
 
 
 '''
@@ -330,7 +341,9 @@ def get_by_parts_calibration_data(df, n_results):
     return out
 
 
-# V2 actually seems to make WORSE predictions with narrower interval ;_;, will need to check MAPE scores 
+# V2 actually seems to make worse interval predictions in first period, but more accurate
+# predictins in subsequent periods. This result holds whether results fitted to six lags or 
+# IC determined fit. Next step to check MAPE scores 
 # to eval accuracy of point predictions. 
 def get_by_parts_calibration_data_V2(df, n_results):
     '''
@@ -505,12 +518,12 @@ def report_calibration_V2(df,n,bp=False):
     elif bp == True:
         report_list = get_by_parts_calibration_data_V2(df,n)
         
-    print('Month One Calibration: ', calibration_check(report_list.actual, report_list.p1l, report_list.p1u))
-    print('Month Two Calibration: ', calibration_check(report_list.actual, report_list.p2l, report_list.p2u))
-    print('Month Three Calibration: ', calibration_check(report_list.actual, report_list.p3l, report_list.p3u))
-    print('Month Four Calibration: ', calibration_check(report_list.actual, report_list.p4l, report_list.p4u))
-    print('Month Five Calibration: ', calibration_check(report_list.actual, report_list.p5l, report_list.p5u))
-    print('Month Six Calibration: ', calibration_check(report_list.actual, report_list.p6l, report_list.p6u))
+    print('Month One Calibration: ', calibration_check(report_list.actual, report_list.p1l, report_list.p1u),'MAPE: ',mape_calc(report_list,'actual','p1p'))
+    print('Month Two Calibration: ', calibration_check(report_list.actual, report_list.p2l, report_list.p2u),'MAPE: ',mape_calc(report_list,'actual','p2p'))
+    print('Month Three Calibration: ', calibration_check(report_list.actual, report_list.p3l, report_list.p3u),'MAPE: ',mape_calc(report_list,'actual','p3p'))
+    print('Month Four Calibration: ', calibration_check(report_list.actual, report_list.p4l, report_list.p4u),'MAPE: ',mape_calc(report_list,'actual','p4p'))
+    print('Month Five Calibration: ', calibration_check(report_list.actual, report_list.p5l, report_list.p5u),'MAPE: ',mape_calc(report_list,'actual','p5p'))
+    print('Month Six Calibration: ', calibration_check(report_list.actual, report_list.p6l, report_list.p6u),'MAPE: ',mape_calc(report_list,'actual','p6p'))
     
 
 # Checking out which variables may be destabilizing model
@@ -530,3 +543,13 @@ for i in ['C','I','G','net_exports','unem','meanprice','mancap','man_industelect
     volatility(i, report=True)
 # unem is the only standout for high volatility in this list
 # others in V2 list of perc change versions
+def mape_calc(df,actual = str,forecast = str):
+    '''
+    Calculates Mean Absolute Percentage Error of forecasted data from actual values
+    Args:
+        df: dataframe containing columns with data of interest
+        actual: column of actual target data for comparison, type = str
+        forecast: column of predicted future values, type = str
+    '''
+    mape = np.sum((df[actual] - df[forecast]) / df[actual]) / len(df[actual])
+    return mape
