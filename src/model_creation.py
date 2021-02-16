@@ -7,10 +7,11 @@
 import pandas as pd
 import numpy as np
 import datetime
-
 import statsmodels.api as sm
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.base.datetools import dates_from_str
+
+from data_cleaning import pc_transform
 
 # Useful for viewing all columns in notebook
 pd.set_option('display.max_columns', 40)
@@ -340,6 +341,13 @@ def get_by_parts_calibration_data(df, n_results):
     out['actual'] = dfc['pcgdp'][-n_results:]
     return out
 
+# Percentage change variables used in V2 model
+pc_transform(df, 'G', 'pcG')
+pc_transform(df, 'net_exports', 'pc_ne')
+pc_transform(df, 'meanprice', 'pc_mp')
+pc_transform(df, 'mancap', 'pc_mc')
+pc_transform(df, 'man_industelect', 'pc_mie')
+pc_transform(df, 'electtot', 'pc_et')
 
 # V2 actually seems to make worse interval predictions in first period, but more accurate
 # predictins in subsequent periods. This result holds whether results fitted to six lags or 
