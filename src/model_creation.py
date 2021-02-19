@@ -2,7 +2,7 @@
 # Title: VAR creation
 # Project: Economic Forecasting
 # Date Created: 1/9/2021
-# Last Updated: 2/16/2021
+# Last Updated: 2/18/2021
 
 import pandas as pd
 import numpy as np
@@ -18,18 +18,17 @@ pd.set_option('display.max_columns', 40)
 
 
 df = pd.read_pickle('cleaned2_121.pkl', compression='zip')
-mdata = df[['pcgdp','mancap','unem','pctot','pcbusinv','pcC','pcI','pcipi','pcsp500']]
 
 
-'''~~~~~~formatting index to work properly, may not be necessary~~~~~~'''
-
-dates = df[['year', 'month']].astype(int).astype(str)
+'''~~~~~~~~~~~~~~~~~~~~~~~~~~Part 1: Basic VAR Model Creation Code~~~~~~~~~~~~~~~~~~~~~~~~~~'''
+# Target dataset creation and time formatting
+dfc = pd.DataFrame(df,copy=True)
+mdata = dfc[['pcgdp','mancap','unem','pctot','pcbusinv','pcC','pcI','pcipi','pcsp500']]
+dates = dfc[['year', 'month']].astype(int).astype(str)
 dates.reset_index(inplace=True,drop=True)
 monthly = dates['year'] + "M" + dates['month']
 monthly = dates_from_str(monthly)
 mdata.index = pd.DatetimeIndex(monthly)
-
-'''~~~~~~~~~~~~~~~~~~~~~~~~~~Model Creation~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 maw = VAR(mdata, freq='m')
 
 # Traditionally with 6 lags:
@@ -56,6 +55,8 @@ results.plot_forecast(6)
 # THIS IS NOT A GOOD LOOKING GRAPH!
 # Will want to implement own custom graphing function for variables of interest
 # like with housing forecasting Deep Learning model
+
+'''~~~~~~~~~~~~~~~~~~~~~Part 2: Generating Out-of-Sample Forecasts for Model Evaluation~~~~~~~~~~~~~~~~~~~~~'''
 
 def get_calibration_data(df, n_results):
     '''
@@ -399,8 +400,8 @@ def get_by_parts_calibration_data_V2(df, n_results):
     for i in range((n_results+5)):
         bp_data.drop(bp_data.tail(1).index,inplace=True)
         b_p = VAR(bp_data.iloc[:,4:], freq='m')
-#         results = b_p.fit(maxlags=12, ic='bic')
-        results = b_p.fit(6)
+        results = b_p.fit(maxlags=12, ic='bic')
+        # results = b_p.fit(6)
         lag_order = results.k_ar
         
         init = np.array([bp_data.iloc[-1][0:4]])
@@ -408,8 +409,7 @@ def get_by_parts_calibration_data_V2(df, n_results):
         lower_bounds = results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[1]
         upper_bounds = results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[2]
         
-        # Point forecast
-        (np.array([25,15,-10,75])/100)+1
+        # Point forecast aggregation
         working_set = (np.array([point_fcast[0][0:4]])/100)+1
         new_bline = init * working_set
         fm1.insert(0,np.sum(new_bline))
@@ -561,3 +561,217 @@ def mape_calc(df,actual = str,forecast = str):
     '''
     mape = np.sum((df[actual] - df[forecast]) / df[actual]) / len(df[actual])
     return mape
+
+
+'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Part 3: Generating Calibrated Forecasts~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
+
+# Generating As-a-Whole forecast
+def gen_forecast_w(df,percentage = True):
+    '''
+    Generates calibrated 6 period forecast of GPD using VAR model. 
+    Uses GDP as-a-whole approach to predict GDP directly. 
+    args: df = dataframe with relevant data, percentage = defaults to True, setting
+        to False toggles output from percentage change format to direct values
+    Output: 6 period point forecast, 6 period lower interval, 6 period upper interval
+        output format is 6X1 numpy arrays
+    '''
+    dfc = pd.DataFrame(df,copy=True)
+    mdata = dfc[['pcgdp','mancap','unem','pctot','pcbusinv','pcC','pcI','pcipi','pcsp500']]
+
+    dates = dfc[['year', 'month']].astype(int).astype(str)
+    dates.reset_index(inplace=True,drop=True)
+    monthly = dates['year'] + "M" + dates['month']
+    monthly = dates_from_str(monthly)
+    mdata.index = pd.DatetimeIndex(monthly)
+    maw = VAR(mdata, freq='m')
+    results = maw.fit(maxlags=12, ic='bic')
+    lag_order = results.k_ar
+    w_correction = np.array([(.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9)])
+    bp_correction = np.array([(.95 / .8), (.95 / .92), (.95 / .9), (.95 / .9), (.95 / .89), (.95 / .89)])
+    
+    w_point_fcast = results.forecast_interval(mdata.values[-lag_order:], 6)[0]
+    w_lower_bounds = results.forecast_interval(mdata.values[-lag_order:], 6)[1]
+    w_upper_bounds = results.forecast_interval(mdata.values[-lag_order:], 6)[2]
+    
+    w_pf = np.array([w_point_fcast[0][0], w_point_fcast[1][0], w_point_fcast[2][0], w_point_fcast[3][0], w_point_fcast[4][0], w_point_fcast[5][0]])
+    w_lb = np.array([w_lower_bounds[0][0], w_lower_bounds[1][0], w_lower_bounds[2][0], w_lower_bounds[3][0], w_lower_bounds[4][0], w_lower_bounds[5][0]])
+    w_ub = np.array([w_upper_bounds[0][0], w_upper_bounds[1][0], w_upper_bounds[2][0], w_upper_bounds[3][0], w_upper_bounds[4][0], w_upper_bounds[5][0]])
+    
+    w_lb = w_lb * w_correction
+    w_ub = w_ub * w_correction
+    
+    
+    if percentage == True:
+        return w_pf, w_lb, w_ub
+    else:
+        w_pf_act = []
+        w_pf_act.append(((w_pf[0]/100)+1)*dfc.gdp[-1])
+        w_pf_act.append(((w_pf[1]/100)+1)*w_pf_act[-1])
+        w_pf_act.append(((w_pf[2]/100)+1)*w_pf_act[-1])
+        w_pf_act.append(((w_pf[3]/100)+1)*w_pf_act[-1])
+        w_pf_act.append(((w_pf[4]/100)+1)*w_pf_act[-1])
+        w_pf_act.append(((w_pf[5]/100)+1)*w_pf_act[-1])
+        w_lb_act = []
+        w_lb_act.append(((w_lb[0]/100)+1)*dfc.gdp[-1])
+        w_lb_act.append(((w_lb[1]/100)+1)*w_lb_act[-1])
+        w_lb_act.append(((w_lb[2]/100)+1)*w_lb_act[-1])
+        w_lb_act.append(((w_lb[3]/100)+1)*w_lb_act[-1])
+        w_lb_act.append(((w_lb[4]/100)+1)*w_lb_act[-1])
+        w_lb_act.append(((w_lb[5]/100)+1)*w_lb_act[-1])
+        w_ub_act = []
+        w_ub_act.append(((w_ub[0]/100)+1)*dfc.gdp[-1])
+        w_ub_act.append(((w_ub[1]/100)+1)*w_ub_act[-1])
+        w_ub_act.append(((w_ub[2]/100)+1)*w_ub_act[-1])
+        w_ub_act.append(((w_ub[3]/100)+1)*w_ub_act[-1])
+        w_ub_act.append(((w_ub[4]/100)+1)*w_ub_act[-1])
+        w_ub_act.append(((w_ub[5]/100)+1)*w_ub_act[-1])
+        
+        w_pf_act = np.array(w_pf_act)
+        w_lb_act = np.array(w_lb_act)
+        w_ub_act = np.array(w_ub_act)
+        
+        return w_pf_act, w_lb_act, w_ub_act
+
+# Generating By-Parts forecast
+def gen_forecast_bp(df,percentage = True):
+    '''
+    Generates calibrated 6 period forecast of GPD using VAR model. 
+    Uses GDP by-part approach to predict GDP by aggregation of component parts
+    according to the equation GDP = C + I + G + net exports. 
+    args: df = dataframe with relevant data, percentage = defaults to True, setting
+        to False toggles output from percentage change format to direct values
+    Output: 6 period point forecast, 6 period lower interval, 6 period upper interval
+        output format is 6X1 numpy arrays
+    '''
+    def pc_convert(pre,post):
+        return ((post - pre) / pre)*100
+    
+    dfc = pd.DataFrame(df,copy=True)
+    
+    bp_data = dfc[['C','I','G','net_exports','pcC','pcI','pcG','pc_ne','unem','pc_mp','pc_mc','pc_mie','pc_et']]
+    dates = dfc[['year', 'month']].astype(int).astype(str)
+    dates.reset_index(inplace=True,drop=True)
+    monthly = dates['year'] + "M" + dates['month']
+    monthly = dates_from_str(monthly)
+    bp_data.index = pd.DatetimeIndex(monthly)
+    
+    b_p = VAR(bp_data.iloc[:,4:], freq='m')
+    bp_results = b_p.fit(maxlags=12, ic='bic')
+    
+    
+    lag_order = bp_results.k_ar
+    w_correction = np.array([(.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9)])
+    bp_correction = np.array([(.95 / .8), (.95 / .92), (.95 / .9), (.95 / .9), (.95 / .89), (.95 / .89)])
+    
+    init = np.array([bp_data.iloc[-1][0:4]])
+    point_fcast = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[0]
+    lower_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[1]
+    upper_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[2]
+    
+    # Aggregate to Point Forecast, actual values
+    bp_pf = []
+    
+    working_set = (np.array([point_fcast[0][0:4]])/100)+1
+    new_bline = init * working_set
+    bp_pf.append(np.sum(new_bline))
+
+    working_set = (np.array([point_fcast[1][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_pf.append(np.sum(new_bline))
+
+    working_set = (np.array([point_fcast[2][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_pf.append(np.sum(new_bline))
+
+    working_set = (np.array([point_fcast[3][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_pf.append(np.sum(new_bline))
+
+    working_set = (np.array([point_fcast[4][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_pf.append(np.sum(new_bline))
+
+    working_set = (np.array([point_fcast[5][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_pf.append(np.sum(new_bline))
+
+    # Lower interval bounds
+    
+    bp_lib = []
+    
+    working_set = (np.array([lower_bounds[0][0:4]])/100)+1
+    new_bline = init * working_set
+    bp_lib.append(np.sum(new_bline)*bp_correction[0])
+
+    working_set = (np.array([lower_bounds[1][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_lib.append(np.sum(new_bline)*bp_correction[1])
+
+    working_set = (np.array([lower_bounds[2][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_lib.append(np.sum(new_bline)*bp_correction[2])
+
+    working_set = (np.array([lower_bounds[3][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_lib.append(np.sum(new_bline)*bp_correction[3])
+
+    working_set = (np.array([lower_bounds[4][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_lib.append(np.sum(new_bline)*bp_correction[4])
+
+    working_set = (np.array([lower_bounds[5][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_lib.append(np.sum(new_bline)*bp_correction[5])
+
+    # Upper interval bounds
+    
+    bp_uib = []
+    
+    working_set = (np.array([upper_bounds[0][0:4]])/100)+1
+    new_bline = init * working_set
+    bp_uib.append(np.sum(new_bline)*bp_correction[0])
+
+    working_set = (np.array([upper_bounds[1][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_uib.append(np.sum(new_bline)*bp_correction[1])
+
+    working_set = (np.array([upper_bounds[2][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_uib.append(np.sum(new_bline)*bp_correction[2])
+
+    working_set = (np.array([upper_bounds[3][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_uib.append(np.sum(new_bline)*bp_correction[3])
+
+    working_set = (np.array([upper_bounds[4][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_uib.append(np.sum(new_bline)*bp_correction[4])
+
+    working_set = (np.array([upper_bounds[5][0:4]])/100)+1
+    new_bline = new_bline * working_set
+    bp_uib.append(np.sum(new_bline)*bp_correction[5])
+    
+    
+    if percentage == False:
+        bp_pf = np.array(bp_pf)
+        bp_lib = np.array(bp_lib)
+        bp_uib = np.array(bp_uib)
+        return bp_pf, bp_lib, bp_uib
+    else:
+        bp_pf.insert(0,dfc.gdp[-1])
+        bp_lib.insert(0,dfc.gdp[-1])
+        bp_uib.insert(0,dfc.gdp[-1])
+        
+        bp_pf_pc = []
+        bp_lib_pc = []
+        bp_uib_pc = []
+        
+        for i in range(1,7):
+            bp_pf_pc.append(pc_convert(bp_pf[i],bp_pf[i-1]))
+            bp_lib_pc.append(pc_convert(bp_lib[i],bp_lib[i-1]))
+            bp_uib_pc.append(pc_convert(bp_uib[i],bp_uib[i-1]))
+        
+        bp_pf_pc = np.array(bp_pf_pc)
+        bp_lib_pc = np.array(bp_lib_pc)
+        bp_uib_pc = np.array(bp_uib_pc)
+        return bp_pf_pc, bp_lib_pc, bp_uib_pc
