@@ -553,25 +553,46 @@ for i in ['C','I','G','net_exports','unem','meanprice','mancap','man_industelect
 # others in V2 list of perc change versions
 def mape_calc(df,actual = str,forecast = str):
     '''
-    Calculates Mean Absolute Percentage Error of forecasted data from actual values
+    Calculates Mean Absolute Percentage Error of forecasted data from actual values.
+    When comparing, a lower MAPE value indicates a more accurate forecast. 
     Args:
         df: dataframe containing columns with data of interest
         actual: column of actual target data for comparison, type = str
         forecast: column of predicted future values, type = str
+    Output: calculated MAPE score. 
     '''
     mape = np.sum((df[actual] - df[forecast]) / df[actual]) / len(df[actual])
     return mape
 
+def specifier(df1,df2,col1=str,col2=str):
+    '''
+    Conducts grid test of combinations of two specified columns of forecasted results
+    to identify combination that minimizes mean absolute percentage error 
+    from actual historic values.
+    args: df1, df2 = dataframe outputs from any of the above get_calibration_data functions
+        col1, col2 = columns of interest containing forecasted data, should be from
+        forecasts of same period out. 
+    ouptuts: minimum MAPE value attained, and weights for models one and two used to
+        attain minimum. 
+    '''
+    spec_test = [i/100 for i in range(101)]
+    df_local = df1
+    mape_list = []
+    for i in range(len(spec_test)):
+        df_local['loop'] = df1[col1]*spec_test[i]+df2[col2]*(1-spec_test[i]) 
+        mape_list.append(mape_calc(df_local,'actual','loop'))
+    best_spec = min(mape_list)
+    best_index = mape_list.index(best_spec)
+    return best_spec, spec_test[best_index], (1-spec_test[best_index])
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Part 3: Generating Calibrated Forecasts~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
 # Generating As-a-Whole forecast
-def gen_forecast_w(df,percentage = True):
+def gen_forecast_w(df):
     '''
     Generates calibrated 6 period forecast of GPD using VAR model. 
     Uses GDP as-a-whole approach to predict GDP directly. 
-    args: df = dataframe with relevant data, percentage = defaults to True, setting
-        to False toggles output from percentage change format to direct values
+    args: df = dataframe with relevant data
     Output: 6 period point forecast, 6 period lower interval, 6 period upper interval
         output format is 6X1 numpy arrays
     '''
@@ -600,40 +621,76 @@ def gen_forecast_w(df,percentage = True):
     w_lb = w_lb * w_correction
     w_ub = w_ub * w_correction
     
+    return w_pf, w_lb, w_ub
     
-    if percentage == True:
-        return w_pf, w_lb, w_ub
-    else:
-        w_pf_act = []
-        w_pf_act.append(((w_pf[0]/100)+1)*dfc.gdp[-1])
-        w_pf_act.append(((w_pf[1]/100)+1)*w_pf_act[-1])
-        w_pf_act.append(((w_pf[2]/100)+1)*w_pf_act[-1])
-        w_pf_act.append(((w_pf[3]/100)+1)*w_pf_act[-1])
-        w_pf_act.append(((w_pf[4]/100)+1)*w_pf_act[-1])
-        w_pf_act.append(((w_pf[5]/100)+1)*w_pf_act[-1])
-        w_lb_act = []
-        w_lb_act.append(((w_lb[0]/100)+1)*dfc.gdp[-1])
-        w_lb_act.append(((w_lb[1]/100)+1)*w_lb_act[-1])
-        w_lb_act.append(((w_lb[2]/100)+1)*w_lb_act[-1])
-        w_lb_act.append(((w_lb[3]/100)+1)*w_lb_act[-1])
-        w_lb_act.append(((w_lb[4]/100)+1)*w_lb_act[-1])
-        w_lb_act.append(((w_lb[5]/100)+1)*w_lb_act[-1])
-        w_ub_act = []
-        w_ub_act.append(((w_ub[0]/100)+1)*dfc.gdp[-1])
-        w_ub_act.append(((w_ub[1]/100)+1)*w_ub_act[-1])
-        w_ub_act.append(((w_ub[2]/100)+1)*w_ub_act[-1])
-        w_ub_act.append(((w_ub[3]/100)+1)*w_ub_act[-1])
-        w_ub_act.append(((w_ub[4]/100)+1)*w_ub_act[-1])
-        w_ub_act.append(((w_ub[5]/100)+1)*w_ub_act[-1])
-        
-        w_pf_act = np.array(w_pf_act)
-        w_lb_act = np.array(w_lb_act)
-        w_ub_act = np.array(w_ub_act)
-        
-        return w_pf_act, w_lb_act, w_ub_act
 
 # Generating By-Parts forecast
-def gen_forecast_bp(df,percentage = True):
+def gen_forecast_bp(df):
+    '''
+    Generates calibrated 6 period forecast of GPD using VAR model. 
+    Uses GDP by-part approach to predict GDP by aggregation of component parts
+    according to the equation GDP = C + I + G + net exports. 
+    args: df = dataframe with relevant data, percentage = defaults to True, setting
+        to False toggles output from percentage change format to direct values
+    Output: 6 period point forecast, 6 period lower interval, 6 period upper interval
+        output format is 6X1 numpy arrays
+    '''
+    def pc_convert(pre,post):
+        return ((post - pre) / pre)*100
+    
+    dfc = pd.DataFrame(df,copy=True)
+
+    bp_data = dfc[['C','I','G','net_exports','unem','meanprice','mancap','man_industelect','electtot']]
+    dates = dfc[['year', 'month']].astype(int).astype(str)
+    dates.reset_index(inplace=True,drop=True)
+    monthly = dates['year'] + "M" + dates['month']
+    monthly = dates_from_str(monthly)
+    bp_data.index = pd.DatetimeIndex(monthly)
+
+    b_p = VAR(bp_data, freq='m')
+    results = b_p.fit(maxlags=12, ic='bic')
+    lag_order = results.k_ar
+    bp_correction = np.array([(.95 / .91), (.95 / .88), (.95 / .87), (.95 / .87), (.95 / .85), (.95 / .83)])
+
+    point_fcast = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[0]
+    lower_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[1]
+    upper_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[2]
+
+    # Aggregate to Point Forecast
+    bp_pf = []
+    bp_lib = []
+    bp_uib = []
+
+    bp_pf.append(pc_convert(np.sum(bp_data.iloc[-1][0:4]), np.sum(point_fcast[0][0:4])))
+    bp_pf.append(pc_convert(np.sum(point_fcast[0][0:4]), np.sum(point_fcast[1][0:4])))
+    bp_pf.append(pc_convert(np.sum(point_fcast[1][0:4]), np.sum(point_fcast[2][0:4])))
+    bp_pf.append(pc_convert(np.sum(point_fcast[2][0:4]), np.sum(point_fcast[3][0:4])))
+    bp_pf.append(pc_convert(np.sum(point_fcast[3][0:4]), np.sum(point_fcast[4][0:4])))
+    bp_pf.append(pc_convert(np.sum(point_fcast[4][0:4]), np.sum(point_fcast[5][0:4])))
+
+    bp_lib.append(pc_convert(np.sum(bp_data.iloc[-1][0:4]), np.sum(lower_bounds[0][0:4])))
+    bp_lib.append(pc_convert(np.sum(lower_bounds[0][0:4]), np.sum(lower_bounds[1][0:4])))
+    bp_lib.append(pc_convert(np.sum(lower_bounds[1][0:4]), np.sum(lower_bounds[2][0:4])))
+    bp_lib.append(pc_convert(np.sum(lower_bounds[2][0:4]), np.sum(lower_bounds[3][0:4])))
+    bp_lib.append(pc_convert(np.sum(lower_bounds[3][0:4]), np.sum(lower_bounds[4][0:4])))
+    bp_lib.append(pc_convert(np.sum(lower_bounds[4][0:4]), np.sum(lower_bounds[5][0:4])))
+
+    bp_uib.append(pc_convert(np.sum(bp_data.iloc[-1][0:4]), np.sum(upper_bounds[0][0:4])))
+    bp_uib.append(pc_convert(np.sum(upper_bounds[0][0:4]), np.sum(upper_bounds[1][0:4])))
+    bp_uib.append(pc_convert(np.sum(upper_bounds[1][0:4]), np.sum(upper_bounds[2][0:4])))
+    bp_uib.append(pc_convert(np.sum(upper_bounds[2][0:4]), np.sum(upper_bounds[3][0:4])))
+    bp_uib.append(pc_convert(np.sum(upper_bounds[3][0:4]), np.sum(upper_bounds[4][0:4])))
+    bp_uib.append(pc_convert(np.sum(upper_bounds[4][0:4]), np.sum(upper_bounds[5][0:4])))
+
+    bp_pf = np.array(bp_pf)
+    bp_lib = np.array(bp_lib)*bp_correction
+    bp_uib = np.array(bp_uib)*bp_correction
+    return bp_pf, bp_lib, bp_uib
+
+
+
+
+def gen_forecast_bp_v2(df,percentage = True):
     '''
     Generates calibrated 6 period forecast of GPD using VAR model. 
     Uses GDP by-part approach to predict GDP by aggregation of component parts
@@ -775,3 +832,5 @@ def gen_forecast_bp(df,percentage = True):
         bp_lib_pc = np.array(bp_lib_pc)
         bp_uib_pc = np.array(bp_uib_pc)
         return bp_pf_pc, bp_lib_pc, bp_uib_pc
+
+
