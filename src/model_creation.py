@@ -615,13 +615,15 @@ def gen_forecast_w(df):
     w_upper_bounds = results.forecast_interval(mdata.values[-lag_order:], 6)[2]
     
     w_pf = np.array([w_point_fcast[0][0], w_point_fcast[1][0], w_point_fcast[2][0], w_point_fcast[3][0], w_point_fcast[4][0], w_point_fcast[5][0]])
-    w_lb = np.array([w_lower_bounds[0][0], w_lower_bounds[1][0], w_lower_bounds[2][0], w_lower_bounds[3][0], w_lower_bounds[4][0], w_lower_bounds[5][0]])
-    w_ub = np.array([w_upper_bounds[0][0], w_upper_bounds[1][0], w_upper_bounds[2][0], w_upper_bounds[3][0], w_upper_bounds[4][0], w_upper_bounds[5][0]])
+    w_lib = np.array([w_lower_bounds[0][0], w_lower_bounds[1][0], w_lower_bounds[2][0], w_lower_bounds[3][0], w_lower_bounds[4][0], w_lower_bounds[5][0]])
+    w_uib = np.array([w_upper_bounds[0][0], w_upper_bounds[1][0], w_upper_bounds[2][0], w_upper_bounds[3][0], w_upper_bounds[4][0], w_upper_bounds[5][0]])
     
-    w_lb = w_lb * w_correction
-    w_ub = w_ub * w_correction
+    w_adjustment = np.array(w_uib - w_lib)*w_correction
+    w_adjustment = w_adjustment / 2
+    w_lib = w_lib - w_adjustment
+    w_uib = w_uib + w_adjustment
     
-    return w_pf, w_lb, w_ub
+    return w_pf, w_lib, w_uib
     
 
 # Generating By-Parts forecast
@@ -683,8 +685,14 @@ def gen_forecast_bp(df):
     bp_uib.append(pc_convert(np.sum(upper_bounds[4][0:4]), np.sum(upper_bounds[5][0:4])))
 
     bp_pf = np.array(bp_pf)
-    bp_lib = np.array(bp_lib)*bp_correction
-    bp_uib = np.array(bp_uib)*bp_correction
+    bp_lib = np.array(bp_lib)
+    bp_uib = np.array(bp_uib)
+
+    bp_adjustment = np.array(bp_uib - bp_lib)*bp_correction
+    bp_adjustment = bp_adjustment / 2
+    bp_lib = bp_lib - bp_adjustment
+    bp_uib = bp_uib + bp_adjustment
+
     return bp_pf, bp_lib, bp_uib
 
 
