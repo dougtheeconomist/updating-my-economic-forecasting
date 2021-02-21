@@ -538,9 +538,10 @@ def report_calibration_V2(df,n,bp=False):
 def volatility(col=str,report = False):
     '''
     Divides standard deviation by mean of a given column in dataframe df
+    Also known as coefficient of variation
     arguments:
-    col: name of column, string
-    report: defaults to False, if set to True, prints out volatility statement
+        col: name of column, string
+        report: defaults to False, if set to True, prints out volatility statement
     '''
     volatility = df[col].std() / df[col].mean()
     if report == True:
@@ -618,7 +619,7 @@ def gen_forecast_w(df):
     w_lib = np.array([w_lower_bounds[0][0], w_lower_bounds[1][0], w_lower_bounds[2][0], w_lower_bounds[3][0], w_lower_bounds[4][0], w_lower_bounds[5][0]])
     w_uib = np.array([w_upper_bounds[0][0], w_upper_bounds[1][0], w_upper_bounds[2][0], w_upper_bounds[3][0], w_upper_bounds[4][0], w_upper_bounds[5][0]])
     
-    w_adjustment = np.array(w_uib - w_lib)*w_correction
+    w_adjustment = np.array(w_uib - w_lib)*w_correction - (w_uib - w_lib)
     w_adjustment = w_adjustment / 2
     w_lib = w_lib - w_adjustment
     w_uib = w_uib + w_adjustment
@@ -650,13 +651,13 @@ def gen_forecast_bp(df):
     bp_data.index = pd.DatetimeIndex(monthly)
 
     b_p = VAR(bp_data, freq='m')
-    results = b_p.fit(maxlags=12, ic='bic')
+    bp_results = b_p.fit(maxlags=12, ic='bic')
     lag_order = results.k_ar
     bp_correction = np.array([(.95 / .91), (.95 / .88), (.95 / .87), (.95 / .87), (.95 / .85), (.95 / .83)])
 
-    point_fcast = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[0]
-    lower_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[1]
-    upper_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:,4:], 6)[2]
+    point_fcast = bp_results.forecast_interval(bp_data.values[-lag_order:], 6)[0]
+    lower_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:], 6)[1]
+    upper_bounds = bp_results.forecast_interval(bp_data.values[-lag_order:], 6)[2]
 
     # Aggregate to Point Forecast
     bp_pf = []
@@ -688,7 +689,7 @@ def gen_forecast_bp(df):
     bp_lib = np.array(bp_lib)
     bp_uib = np.array(bp_uib)
 
-    bp_adjustment = np.array(bp_uib - bp_lib)*bp_correction
+    bp_adjustment = np.array(bp_uib - bp_lib)*bp_correction - (bp_uib - bp_lib)
     bp_adjustment = bp_adjustment / 2
     bp_lib = bp_lib - bp_adjustment
     bp_uib = bp_uib + bp_adjustment
@@ -842,3 +843,50 @@ def gen_forecast_bp_v2(df,percentage = True):
         return bp_pf_pc, bp_lib_pc, bp_uib_pc
 
 
+def get_specifications(report = True):
+    spec_list_a = []
+    spec_list_a.append(specifier(wholedf,bpv1df,'p1p','p1p')[1])
+    spec_list_a.append(specifier(wholedf,bpv1df,'p2p','p2p')[1])
+    spec_list_a.append(specifier(wholedf,bpv1df,'p3p','p3p')[1])
+    spec_list_a.append(specifier(wholedf,bpv1df,'p4p','p4p')[1])
+    spec_list_a.append(specifier(wholedf,bpv1df,'p5p','p5p')[1])
+    spec_list_a.append(specifier(wholedf,bpv1df,'p6p','p6p')[1])
+
+    spec_list_b = []
+    spec_list_b.append(specifier(wholedf,bpv1df,'p1p','p1p')[2])
+    spec_list_b.append(specifier(wholedf,bpv1df,'p2p','p2p')[2])
+    spec_list_b.append(specifier(wholedf,bpv1df,'p3p','p3p')[2])
+    spec_list_b.append(specifier(wholedf,bpv1df,'p4p','p4p')[2])
+    spec_list_b.append(specifier(wholedf,bpv1df,'p5p','p5p')[2])
+    spec_list_b.append(specifier(wholedf,bpv1df,'p6p','p6p')[2])
+    if report == True:
+        for i in range(1,7):
+            print('Best model weighting for period',i,f"is  {spec_list_a[i-1]} for model one and {spec_list_b[i-1]} for model 2.")
+    return np.array(spec_list_a), np.array(spec_list_b)
+'''
+Best model weighting for period 1 is  1.0 for model one and 0.0 for model 2.
+Best model weighting for period 2 is  0.97 for model one and 0.030000000000000027 for model 2.
+Best model weighting for period 3 is  1.0 for model one and 0.0 for model 2.
+Best model weighting for period 4 is  0.62 for model one and 0.38 for model 2.
+Best model weighting for period 5 is  0.31 for model one and 0.69 for model 2.
+Best model weighting for period 6 is  0.73 for model one and 0.27 for model 2.
+'''
+
+def ensamble_forecast_beta(df,actual = False):
+    '''
+    Generates ensamble forecast as final product. Intervals have been calibrated 
+    and weighting is done according to grid search for optimal combination.
+    default is to report forecast as percentage change from previous format.
+    args: df = dataframe with relevant data, 
+        actual = default to False, if set to True will report actual values of US GDP
+    '''
+    as_a_whole = gen_forecast_w(df)
+    by_parts = gen_forecast_bp(df)
+    w_weights = get_specifications(report = False)[0]
+    bp_weights = get_specifications(report = False)[1]
+    
+    ensamble_point_forecast = as_a_whole[0] * w_weights + by_parts[0] * bp_weights
+    ensamble_lower_range = as_a_whole[1] * w_weights + by_parts[1] * bp_weights
+    ensamble_upper_range = as_a_whole[2] * w_weights + by_parts[2] * bp_weights
+
+    return ensamble_point_forecast, ensamble_lower_range, ensamble_upper_range
