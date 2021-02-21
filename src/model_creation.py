@@ -872,21 +872,38 @@ Best model weighting for period 5 is  0.31 for model one and 0.69 for model 2.
 Best model weighting for period 6 is  0.73 for model one and 0.27 for model 2.
 '''
 
-def ensamble_forecast_beta(df,actual = False):
+def ensamble_forecast(df, col = str, actual = False):
     '''
     Generates ensamble forecast as final product. Intervals have been calibrated 
     and weighting is done according to grid search for optimal combination.
     default is to report forecast as percentage change from previous format.
-    args: df = dataframe with relevant data, 
+    args: df = dataframe with relevant data, col = string, name of column in df to forecast
         actual = default to False, if set to True will report actual values of US GDP
     '''
+    def converter(root, percentage):
+        return root * ((percentage / 100) + 1)
+    
     as_a_whole = gen_forecast_w(df)
     by_parts = gen_forecast_bp(df)
     w_weights = get_specifications(report = False)[0]
     bp_weights = get_specifications(report = False)[1]
-    
+
     ensamble_point_forecast = as_a_whole[0] * w_weights + by_parts[0] * bp_weights
     ensamble_lower_range = as_a_whole[1] * w_weights + by_parts[1] * bp_weights
     ensamble_upper_range = as_a_whole[2] * w_weights + by_parts[2] * bp_weights
 
+    if actual == True:
+        root = df[col][-1]
+        ensamble_point_forecast[0] = converter(root,ensamble_point_forecast[0])
+        for i in range(1,6):
+            ensamble_point_forecast[i] = converter(ensamble_point_forecast[i-1],ensamble_point_forecast[i])
+        
+        ensamble_lower_range[0] = converter(root,ensamble_lower_range[0])
+        for i in range(1,6):
+            ensamble_lower_range[i] = converter(ensamble_lower_range[i-1],ensamble_lower_range[i])
+        
+        ensamble_upper_range[0] = converter(root,ensamble_upper_range[0])
+        for i in range(1,6):
+            ensamble_upper_range[i] = converter(ensamble_upper_range[i-1],ensamble_upper_range[i])
+    
     return ensamble_point_forecast, ensamble_lower_range, ensamble_upper_range
