@@ -2,7 +2,7 @@
 # Title: VAR creation
 # Project: Economic Forecasting
 # Date Created: 1/9/2021
-# Last Updated: 2/23/2021
+# Last Updated: 3/19/2021
 
 import pandas as pd
 import numpy as np
@@ -188,7 +188,6 @@ def calibration_check(actual, lower, upper, bias_as_percent=False):
         return calibration, bias/n
     else:
         return calibration, bias
-
 
 def mape_calc(df,actual = str,forecast = str):
     '''
@@ -553,18 +552,7 @@ for i in ['C','I','G','net_exports','unem','meanprice','mancap','man_industelect
     volatility(i, report=True)
 # unem is the only standout for high volatility in this list
 # others in V2 list of perc change versions
-def mape_calc(df,actual = str,forecast = str):
-    '''
-    Calculates Mean Absolute Percentage Error of forecasted data from actual values.
-    When comparing, a lower MAPE value indicates a more accurate forecast. 
-    Args:
-        df: dataframe containing columns with data of interest
-        actual: column of actual target data for comparison, type = str
-        forecast: column of predicted future values, type = str
-    Output: calculated MAPE score. 
-    '''
-    mape = np.sum((df[actual] - df[forecast]) / df[actual]) / len(df[actual])
-    return mape
+
 
 def specifier(df1,df2,col1=str,col2=str):
     '''
@@ -865,12 +853,14 @@ def get_specifications(report = True):
             print('Best model weighting for period',i,f"is  {spec_list_a[i-1]} for model one and {spec_list_b[i-1]} for model 2.")
     return np.array(spec_list_a), np.array(spec_list_b)
 '''
-Best model weighting for period 1 is  1.0 for model one and 0.0 for model 2.
-Best model weighting for period 2 is  0.97 for model one and 0.030000000000000027 for model 2.
-Best model weighting for period 3 is  1.0 for model one and 0.0 for model 2.
-Best model weighting for period 4 is  0.62 for model one and 0.38 for model 2.
-Best model weighting for period 5 is  0.31 for model one and 0.69 for model 2.
-Best model weighting for period 6 is  0.73 for model one and 0.27 for model 2.
+Best model weighting for period 1 is  1.0 for model one and 0.0 for model two.
+Best model weighting for period 2 is  0.97 for model one and 0.030000000000000027 for model two.
+Best model weighting for period 3 is  1.0 for model one and 0.0 for model two.
+Best model weighting for period 4 is  0.62 for model one and 0.38 for model two.
+Best model weighting for period 5 is  0.31 for model one and 0.69 for model two.
+Best model weighting for period 6 is  0.73 for model one and 0.27 for model two.
+
+In this case model one is as a whole and model two is by parts
 '''
 
 def ensamble_forecast(df, col = str, actual = False):
