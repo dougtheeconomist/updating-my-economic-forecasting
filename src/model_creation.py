@@ -2,7 +2,7 @@
 # Title: VAR creation
 # Project: Economic Forecasting
 # Date Created: 1/9/2021
-# Last Updated: 4/8/2021
+# Last Updated: 4/9/2021
 
 import pandas as pd
 import numpy as np
@@ -12,15 +12,15 @@ import statsmodels.api as sm
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.base.datetools import dates_from_str
 
-from functions import get_calibration_data, get_by_parts_calibration_data, 
+from functions import (get_calibration_data, get_by_parts_calibration_data, 
 calibration_check, mape_calc, report_calibration, volatility, specifier, 
-gen_forecast_w, gen_forecast_bp, get_specifications, ensamble_forecast
+gen_forecast_w, gen_forecast_bp, get_specifications, ensamble_forecast)
 
 # Useful for viewing all columns in notebook
 # pd.set_option('display.max_columns', 40)
 
 
-df = pd.read_pickle('cleaned2_121.pkl', compression='zip')
+df = pd.read_pickle('cleaned_421.pkl', compression='zip')
 
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~Part 1: Basic VAR Model Creation Code~~~~~~~~~~~~~~~~~~~~~~~~~~'''

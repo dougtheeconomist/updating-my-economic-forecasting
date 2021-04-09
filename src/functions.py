@@ -2,7 +2,7 @@
 # Title: VAR functions
 # Project: Economic Forecasting
 # Date Created: 4/8/2021
-# Last Updated: 4/8/2021
+# Last Updated: 4/9/2021
 
 import pandas as pd
 import numpy as np
@@ -13,7 +13,6 @@ from statsmodels.tsa.api import VAR
 from statsmodels.tsa.base.datetools import dates_from_str
 
 
-
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Calibration and reporting functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
 # As-a-whole model calibration backtesting data collection
@@ -21,10 +20,16 @@ def get_calibration_data(df, n_results):
     '''
     Runs VAR code and saves resulting predictions to lists, then drops most recent row of data and repeats n_results 
     times. Coded for save calibration data for 6 period forecast. 
-    inputs:
-        df: dataframe containing data for use in VAR model
-        n_results: int, number of periods backwards to run the model and retain results, must be greater than 6
+    Parameters
+    ----------
+    df: dataframe containing data for use in VAR model
+    n_results: int, number of periods backwards to run the model and retain results, must be greater than 6
     
+    Returns
+    -------
+    out : pandas dataframe containing forecasting results from backtesting as well as target 
+        variable for comparison. 
+
     '''
     dfc = pd.DataFrame(df,copy=True)
     mdata = dfc[['pcgdp','mancap','unem','pctot','pcbusinv','pcC','pcI','pcipi','pcsp500']]
@@ -58,7 +63,8 @@ def get_calibration_data(df, n_results):
     for i in range((n_results+5)):
         mdata.drop(mdata.tail(1).index,inplace=True)
         maw = VAR(mdata, freq='m')
-        results = maw.fit(6)
+        results = maw.fit(maxlags=12, ic='bic')
+        # results = maw.fit(6)
         lag_order = results.k_ar
         
         point_fcast = results.forecast_interval(mdata.values[-lag_order:], 6)[0]
@@ -118,10 +124,16 @@ def get_by_parts_calibration_data(df, n_results):
     '''
     Runs VAR code and saves resulting predictions to lists, then drops most recent row of data and repeats n_results 
     times. Coded for save calibration data for 6 period forecast. 
-    inputs:
-        df: dataframe containing data for use in VAR model
-        n_results: int, number of periods backwards to run the model and retain results, must be greater than 6
+    Parameters
+    ----------
+    df: dataframe containing data for use in VAR model
+    n_results: int, number of periods backwards to run the model and retain results, must be greater than 6
     
+    Returns
+    -------
+    out : pandas dataframe containing forecasting results from backtesting as well as target 
+        variable for comparison. 
+
     '''
     def pc_convert(pre,post):
         return ((post - pre) / pre)*100
@@ -157,8 +169,8 @@ def get_by_parts_calibration_data(df, n_results):
     for i in range((n_results+5)):
         bp_data.drop(bp_data.tail(1).index,inplace=True)
         b_p = VAR(bp_data, freq='m')
-#         results = b_p.fit(maxlags=12, ic='bic')
-        results = b_p.fit(6)
+        results = b_p.fit(maxlags=12, ic='bic')
+        # results = b_p.fit(6)
         lag_order = results.k_ar
         
         point_fcast = results.forecast_interval(bp_data.values[-lag_order:], 6)[0]
@@ -219,20 +231,23 @@ def get_by_parts_calibration_data(df, n_results):
 def calibration_check(actual, lower, upper, bias_as_percent=False):
     '''
     To find how frequently true value falls within projected range
-    Inputs:
-        actual: historic values for comparison, series
-        upper: upper bounds of interval forecast, series or list
-        lower: lower bounds of interval forecast, series or list
-    Outputs:
-        calibration: count of times actual falls within interval divided by n
+    Parameters
+    ----------
+    actual: historic values for comparison, series
+    upper: upper bounds of interval forecast, series or list
+    lower: lower bounds of interval forecast, series or list
+    bias_as_percent: Defaults to False, if true bias will be reported as ratio of bias to n
+
+    Returns
+    -------
+    out : calibration: count of times actual falls within interval divided by n
         bias: Indicates direction of bias in the event that the predictions are 
             consistently high or low.
             Returns times number of times actual exceeded upper bounds less the
             number of times actual fell below lower bounds. If equal to zero, any errors 
             are equally spread above and below target range. If bias_as_percent set to True;
             bias will be reported as a ratio to n, or the number of predicted values for comparison. 
-    Options:
-        bias_as_percent: Defaults to False, if true bias will be reported as ratio of bias to n 
+
     '''
     n = len(actual)
     count = 0
@@ -252,6 +267,10 @@ def calibration_check(actual, lower, upper, bias_as_percent=False):
 
 def mape_calc(df,actual = str,forecast = str):
     '''
+    Parameters
+----------
+Returns
+-------
     Calculates Mean Absolute Percentage Error of forecasted data from actual values
     Args:
         df: dataframe containing columns with data of interest
@@ -263,14 +282,20 @@ def mape_calc(df,actual = str,forecast = str):
 
 def report_calibration(df,n,bp=False):
     '''
+    
     Combines get_calibration_data and calibration_check functions 
     for ease of use. Prints results for forecasts one to six months out.
-    inputs:
-        df: dataframe containing data for modeling
-        n: number of forecasts of past periods to generate for comparison
-        bp: defaults to False, for use if variable of interest is first column of data.
-            To evaluate by parts model, set to True. This will add first 4 columns to create
-            GDP measure.
+    Parameters
+    ----------
+    df: dataframe containing data for modeling
+    n: number of forecasts of past periods to generate for comparison
+    bp: defaults to False, for use if variable of interest is first column of data.
+        To evaluate by parts model, set to True. This will sum first 4 columns to create
+        GDP measure.
+    Returns
+    -------
+    prints calibration and error score for each period forecast
+
     '''
     if bp == False:
         report_list = get_calibration_data(df,n)
@@ -290,35 +315,21 @@ def volatility(col=str,report = False):
     '''
     Divides standard deviation by mean of a given column in dataframe df
     Also known as coefficient of variation
-    arguments:
-        col: name of column, string
-        report: defaults to False, if set to True, prints out volatility statement
+    Parameters
+    ----------
+    col: name of column, string
+    report: defaults to False, if set to True, prints out volatility statement
+
+    Returns
+    -------
+    out : float, volatility of given column
+
     '''
     volatility = df[col].std() / df[col].mean()
     if report == True:
         print(f"Volatility of {col} is {volatility}.")
     return volatility
 
-def specifier(df1,df2,col1=str,col2=str):
-    '''
-    Conducts grid test of combinations of two specified columns of forecasted results
-    to identify combination that minimizes mean absolute percentage error 
-    from actual historic values.
-    args: df1, df2 = dataframe outputs from any of the above get_calibration_data functions
-        col1, col2 = columns of interest containing forecasted data, should be from
-        forecasts of same period out. 
-    ouptuts: minimum MAPE value attained, and weights for models one and two used to
-        attain minimum. 
-    '''
-    spec_test = [i/100 for i in range(101)]
-    df_local = df1
-    mape_list = []
-    for i in range(len(spec_test)):
-        df_local['loop'] = df1[col1]*spec_test[i]+df2[col2]*(1-spec_test[i]) 
-        mape_list.append(mape_calc(df_local,'actual','loop'))
-    best_spec = min(mape_list)
-    best_index = mape_list.index(best_spec)
-    return best_spec, spec_test[best_index], (1-spec_test[best_index])
 
 '''
 Future work: need to reformat these functions to be able to take number of 
@@ -338,9 +349,15 @@ def gen_forecast_w(df):
     '''
     Generates calibrated 6 period forecast of GPD using VAR model. 
     Uses GDP as-a-whole approach to predict GDP directly. 
-    args: df = dataframe with relevant data
-    Output: 6 period point forecast, 6 period lower interval, 6 period upper interval
-        output format is 6X1 numpy arrays
+    Parameters
+    ----------
+     df = dataframe with relevant data
+
+    Returns
+    -------
+    Out : 6 period point forecast, 6 period lower interval, 6 period upper interval
+        format =  6x1 numpy arrays
+    
     '''
     dfc = pd.DataFrame(df,copy=True)
     mdata = dfc[['pcgdp','mancap','unem','pctot','pcbusinv','pcC','pcI','pcipi','pcsp500']]
@@ -378,9 +395,14 @@ def gen_forecast_bp(df):
     Generates calibrated 6 period forecast of GPD using VAR model. 
     Uses GDP by-part approach to predict GDP by aggregation of component parts
     according to the equation GDP = C + I + G + net exports. 
-    args: df = dataframe with relevant data, percentage = defaults to True, setting
+    Parameters
+    ---------- 
+    df = dataframe with relevant data, percentage = defaults to True, setting
         to False toggles output from percentage change format to direct values
-    Output: 6 period point forecast, 6 period lower interval, 6 period upper interval
+    
+    Returns
+    -------
+    Out : 6 period point forecast, 6 period lower interval, 6 period upper interval
         output format is 6X1 numpy arrays
     '''
     def pc_convert(pre,post):
@@ -441,22 +463,63 @@ def gen_forecast_bp(df):
 
     return bp_pf, bp_lib, bp_uib
 
-def get_specifications(report = True):
+
+def specifier(df1,df2,col1=str,col2=str):
+    '''
+    Conducts grid test of combinations of two specified columns of forecasted results
+    to identify combination that minimizes mean absolute percentage error 
+    from actual historic values.
+    Parameters
+    ----------
+    df1, df2 = dataframe outputs from any of the above get_calibration_data functions
+        col1, col2 = columns of interest containing forecasted data, should be from
+        forecasts of same period out. 
+    Returns
+    -------
+    out : Minimum MAPE value attained, and weights for models one and two used to
+        attain minimum. 
+    '''
+    spec_test = [i/100 for i in range(101)]
+    df_local = df1
+    mape_list = []
+    for i in range(len(spec_test)):
+        df_local['loop'] = df1[col1]*spec_test[i]+df2[col2]*(1-spec_test[i]) 
+        mape_list.append(mape_calc(df_local,'actual','loop'))
+    best_spec = min(mape_list)
+    best_index = mape_list.index(best_spec)
+    return best_spec, spec_test[best_index], (1-spec_test[best_index])
+
+def get_specifications(m1_data, m2_data, report = True):
+    '''
+    Runs specifier on each time period generated by forecasts
+    to ascertain optimal ensamble weights of each model for each period 
+    out from the present
+    
+    Parameters
+    ----------
+    m1_data: dataframe containing backtested results from first model
+    m2_data: dataframe containing backtested results from second model
+    report: if True(default) specifications are printed in addition to returned
+    
+    Returns
+    -------
+    out : Numpy arrays containing the optimal weights for each model. 
+    '''
     spec_list_a = []
-    spec_list_a.append(specifier(wholedf,bpv1df,'p1p','p1p')[1])
-    spec_list_a.append(specifier(wholedf,bpv1df,'p2p','p2p')[1])
-    spec_list_a.append(specifier(wholedf,bpv1df,'p3p','p3p')[1])
-    spec_list_a.append(specifier(wholedf,bpv1df,'p4p','p4p')[1])
-    spec_list_a.append(specifier(wholedf,bpv1df,'p5p','p5p')[1])
-    spec_list_a.append(specifier(wholedf,bpv1df,'p6p','p6p')[1])
+    spec_list_a.append(specifier(m1_data,m2_data,'p1p','p1p')[1])
+    spec_list_a.append(specifier(m1_data,m2_data,'p2p','p2p')[1])
+    spec_list_a.append(specifier(m1_data,m2_data,'p3p','p3p')[1])
+    spec_list_a.append(specifier(m1_data,m2_data,'p4p','p4p')[1])
+    spec_list_a.append(specifier(m1_data,m2_data,'p5p','p5p')[1])
+    spec_list_a.append(specifier(m1_data,m2_data,'p6p','p6p')[1])
 
     spec_list_b = []
-    spec_list_b.append(specifier(wholedf,bpv1df,'p1p','p1p')[2])
-    spec_list_b.append(specifier(wholedf,bpv1df,'p2p','p2p')[2])
-    spec_list_b.append(specifier(wholedf,bpv1df,'p3p','p3p')[2])
-    spec_list_b.append(specifier(wholedf,bpv1df,'p4p','p4p')[2])
-    spec_list_b.append(specifier(wholedf,bpv1df,'p5p','p5p')[2])
-    spec_list_b.append(specifier(wholedf,bpv1df,'p6p','p6p')[2])
+    spec_list_b.append(specifier(m1_data,m2_data,'p1p','p1p')[2])
+    spec_list_b.append(specifier(m1_data,m2_data,'p2p','p2p')[2])
+    spec_list_b.append(specifier(m1_data,m2_data,'p3p','p3p')[2])
+    spec_list_b.append(specifier(m1_data,m2_data,'p4p','p4p')[2])
+    spec_list_b.append(specifier(m1_data,m2_data,'p5p','p5p')[2])
+    spec_list_b.append(specifier(m1_data,m2_data,'p6p','p6p')[2])
     if report == True:
         for i in range(1,7):
             print('Best model weighting for period',i,f"is  {spec_list_a[i-1]} for model one and {spec_list_b[i-1]} for model 2.")
@@ -467,8 +530,15 @@ def ensamble_forecast(df, col = str, actual = False):
     Generates ensamble forecast as final product. Intervals have been calibrated 
     and weighting is done according to grid search for optimal combination.
     default is to report forecast as percentage change from previous format.
-    args: df = dataframe with relevant data, col = string, name of column in df to forecast
-        actual = default to False, if set to True will report actual values of US GDP
+    Parameters
+    ----------
+    df = dataframe with relevant data 
+    col = string, name of column in df to forecast
+    actual = default to False, if set to True will report actual values of US GDP
+    Returns
+    -------
+    out : point forecast, lower forecast range, upper forecast range
+        format = numpy arrays
     '''
     def converter(root, percentage):
         return root * ((percentage / 100) + 1)
