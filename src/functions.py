@@ -233,7 +233,7 @@ def get_by_parts_calibration_data(df, n_results):
 def calibration_check(actual, lower, upper, bias_as_percent=False):
     '''
     To find how frequently true value falls within projected range
-    
+
     Parameters
     ----------
     actual: historic values for comparison, series
@@ -381,8 +381,8 @@ def gen_forecast_w(df):
     maw = VAR(mdata, freq='m')
     results = maw.fit(maxlags=12, ic='bic')
     lag_order = results.k_ar
+
     w_correction = np.array([(.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9), (.95 / .9)])
-    bp_correction = np.array([(.95 / .8), (.95 / .92), (.95 / .9), (.95 / .9), (.95 / .89), (.95 / .89)])
     
     w_point_fcast = results.forecast_interval(mdata.values[-lag_order:], 6)[0]
     w_lower_bounds = results.forecast_interval(mdata.values[-lag_order:], 6)[1]
@@ -431,7 +431,7 @@ def gen_forecast_bp(df):
 
     b_p = VAR(bp_data, freq='m')
     bp_results = b_p.fit(maxlags=12, ic='bic')
-    lag_order = results.k_ar
+    lag_order = bp_results.k_ar
     bp_correction = np.array([(.95 / .91), (.95 / .88), (.95 / .87), (.95 / .87), (.95 / .85), (.95 / .83)])
 
     point_fcast = bp_results.forecast_interval(bp_data.values[-lag_order:], 6)[0]
@@ -559,15 +559,16 @@ def ensamble_forecast(df, col = str, actual = False):
     
     as_a_whole = gen_forecast_w(df)
     by_parts = gen_forecast_bp(df)
-    w_weights = get_specifications(report = False)[0]
-    bp_weights = get_specifications(report = False)[1]
+    specs = get_specifications(get_calibration_data(df, 100), get_by_parts_calibration_data(df, 100), report = False)
+    w_weights = specs[0]
+    bp_weights = specs[1]
 
     ensamble_point_forecast = as_a_whole[0] * w_weights + by_parts[0] * bp_weights
     ensamble_lower_range = as_a_whole[1] * w_weights + by_parts[1] * bp_weights
     ensamble_upper_range = as_a_whole[2] * w_weights + by_parts[2] * bp_weights
 
     if actual == True:
-        root = df[col][-1]
+        root = df[col][df.shape[0]-1]
         ensamble_point_forecast[0] = converter(root,ensamble_point_forecast[0])
         for i in range(1,6):
             ensamble_point_forecast[i] = converter(ensamble_point_forecast[i-1],ensamble_point_forecast[i])
