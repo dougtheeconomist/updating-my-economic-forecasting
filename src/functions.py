@@ -20,6 +20,7 @@ def get_calibration_data(df, n_results):
     '''
     Runs VAR code and saves resulting predictions to lists, then drops most recent row of data and repeats n_results 
     times. Coded for save calibration data for 6 period forecast. 
+
     Parameters
     ----------
     df: dataframe containing data for use in VAR model
@@ -124,6 +125,7 @@ def get_by_parts_calibration_data(df, n_results):
     '''
     Runs VAR code and saves resulting predictions to lists, then drops most recent row of data and repeats n_results 
     times. Coded for save calibration data for 6 period forecast. 
+
     Parameters
     ----------
     df: dataframe containing data for use in VAR model
@@ -231,6 +233,7 @@ def get_by_parts_calibration_data(df, n_results):
 def calibration_check(actual, lower, upper, bias_as_percent=False):
     '''
     To find how frequently true value falls within projected range
+    
     Parameters
     ----------
     actual: historic values for comparison, series
@@ -267,15 +270,18 @@ def calibration_check(actual, lower, upper, bias_as_percent=False):
 
 def mape_calc(df,actual = str,forecast = str):
     '''
-    Parameters
-----------
-Returns
--------
     Calculates Mean Absolute Percentage Error of forecasted data from actual values
-    Args:
-        df: dataframe containing columns with data of interest
-        actual: column of actual target data for comparison, type = str
-        forecast: column of predicted future values, type = str
+
+    Parameters
+    ----------
+    df: dataframe containing columns with data of interest
+    actual: column of actual target data for comparison, type = str
+    forecast: column of predicted future values, type = str
+
+    Returns
+    -------
+    out : error metric, float
+
     '''
     mape = np.sum(np.abs((df[actual] - df[forecast]) / df[actual])) / len(df[actual])
     return mape
@@ -285,6 +291,7 @@ def report_calibration(df,n,bp=False):
     
     Combines get_calibration_data and calibration_check functions 
     for ease of use. Prints results for forecasts one to six months out.
+
     Parameters
     ----------
     df: dataframe containing data for modeling
@@ -292,6 +299,7 @@ def report_calibration(df,n,bp=False):
     bp: defaults to False, for use if variable of interest is first column of data.
         To evaluate by parts model, set to True. This will sum first 4 columns to create
         GDP measure.
+
     Returns
     -------
     prints calibration and error score for each period forecast
@@ -311,13 +319,15 @@ def report_calibration(df,n,bp=False):
 
 
 # Checking out which variables may be destabilizing model
-def volatility(col=str,report = False):
+def volatility(df, col=str, report = False):
     '''
     Divides standard deviation by mean of a given column in dataframe df
     Also known as coefficient of variation
+
     Parameters
     ----------
-    col: name of column, string
+    df: dataframe containing relevant data
+    col: name of column within df, string
     report: defaults to False, if set to True, prints out volatility statement
 
     Returns
@@ -349,6 +359,7 @@ def gen_forecast_w(df):
     '''
     Generates calibrated 6 period forecast of GPD using VAR model. 
     Uses GDP as-a-whole approach to predict GDP directly. 
+
     Parameters
     ----------
      df = dataframe with relevant data
@@ -395,6 +406,7 @@ def gen_forecast_bp(df):
     Generates calibrated 6 period forecast of GPD using VAR model. 
     Uses GDP by-part approach to predict GDP by aggregation of component parts
     according to the equation GDP = C + I + G + net exports. 
+
     Parameters
     ---------- 
     df = dataframe with relevant data, percentage = defaults to True, setting
@@ -469,6 +481,7 @@ def specifier(df1,df2,col1=str,col2=str):
     Conducts grid test of combinations of two specified columns of forecasted results
     to identify combination that minimizes mean absolute percentage error 
     from actual historic values.
+
     Parameters
     ----------
     df1, df2 = dataframe outputs from any of the above get_calibration_data functions
@@ -530,6 +543,7 @@ def ensamble_forecast(df, col = str, actual = False):
     Generates ensamble forecast as final product. Intervals have been calibrated 
     and weighting is done according to grid search for optimal combination.
     default is to report forecast as percentage change from previous format.
+
     Parameters
     ----------
     df = dataframe with relevant data 
@@ -567,3 +581,80 @@ def ensamble_forecast(df, col = str, actual = False):
             ensamble_upper_range[i] = converter(ensamble_upper_range[i-1],ensamble_upper_range[i])
     
     return ensamble_point_forecast, ensamble_lower_range, ensamble_upper_range
+
+'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Graphing functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
+
+def make_ready(df,periods):
+    '''
+    Helper function to graph_forecast. Takes dataframe with datetime index 
+    and returns dataframe with extended index in which to append results of forecast
+
+    Parameters
+    ----------
+    df: dataframe containing variable to forecast with index set to datetime variable
+    
+    periods: number of periods out to extend dataset to accomodate forecast
+
+    Returns
+    -------
+    out : empty dataframe with time series index for use as graphing axis
+
+    '''
+    new_dates = add_periods(df,periods)
+    dfi = pd.DataFrame(data = None, index = new_dates)
+    dfnew = pd.DataFrame(data = None, index = df.index.append(dfi.index))
+    return dfnew
+
+def graph_forecast(df, series, low, high, point, title = str, y_ax = str, p = 6):
+    '''
+    Graphs results of final forecast output with window of previous data for reference
+
+    Parameters
+    ----------
+    df = dataframe containing historic data on variable of interest
+    series = column within df containing forecasted variable
+    low = lower bounds of interval forecast, array or list-like
+    high = upper bounds of interval forecast, array or list-like
+    point = point forecast, array or list-like
+    title = title for graph, string format
+    y_ax = label for y axis, string format
+    p = number of periods into the future to forecast
+
+    Returns
+    -------
+    printout of graph
+
+    '''
+    
+    dfg = pd.DataFrame(df,copy=True)
+    g_point = np.insert(point, 0, dfg[series][-1])
+    g_low = np.insert(low, 0, dfg[series][-1])
+    g_high = np.insert(high, 0, dfg[series][-1])
+    
+    dfg = make_ready(dfg,p)
+    
+    fig, ax = plt.subplots(figsize=(12,6))
+#     fig.patch.set_facecolor('white')
+#     plt.rcParams['figure.facecolor'] = 'white'
+    ax.patch.set_facecolor('magenta')
+    ax.plot(dfg.index[-(p+1):], g_point, '.-', color = 'cyan', label='Forecast')
+    ax.plot(dfg.index[-(p+1):], g_low, '.--', color = 'c', label='Low')
+    ax.plot(dfg.index[-(p+1):], g_high, '.-.', color = 'c', label='High')
+    ax.fill_between(dfg.index[-(p+1):], g_low, g_high, alpha = .4, color = 'c')
+    ax.grid(axis='y')
+    # ax.plot( sdf.date2[-len(y_test):], y_train, label='actual')
+    ax.plot(dfg.index[-50:-p], dfg[series][-50:-p], color='cyan', label='Historic')
+    ax.set_xlabel('Time in Months',fontsize = 18)
+    ax.set_ylabel(y_ax, fontsize = 18)
+    ax.set_title(title, fontsize = 22, pad = 8)
+#     ax.legend()
+    ax.legend(shadow=1, fontsize='large',loc=2, facecolor = 'm')
+    for spine in plt.gca().spines.values():
+        spine.set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    plt.rcParams['lines.linewidth'] = 2
+#     plt.rcParams["font.family"] = "Palatino"
+#     plt.rcParams['axes.facecolor'] = 'black'
