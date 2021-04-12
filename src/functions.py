@@ -11,6 +11,8 @@ from dateutil.relativedelta import relativedelta
 import statsmodels.api as sm
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.base.datetools import dates_from_str
+import matplotlib.pyplot as plt
+# %matplotlib inline # if run in Jupyter
 
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Calibration and reporting functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
@@ -585,10 +587,34 @@ def ensamble_forecast(df, col = str, actual = False):
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Graphing functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
+def add_periods(df, n, delta = 'months'):
+    '''
+    Helper function to make_ready. Append new dates to end of datetime series with appropriate time interval 
+    in between, specified as delta, months by default. 
+
+    Parameters
+    ----------
+    df: dataframe containing variable to forecast with index set to datetime variable
+    
+    periods: number of periods out to extend dataset to accomodate forecast
+
+    delta: frequency of time variable, string format, defaults to months
+
+    Returns
+    -------
+
+
+    '''
+    updates = [df.index[-1] + relativedelta(months=1)]
+    for _ in range(n-1):
+        updates.append(updates[-1] + relativedelta(months=1))
+    return updates
+
 def make_ready(df,periods):
     '''
     Helper function to graph_forecast. Takes dataframe with datetime index 
-    and returns dataframe with extended index in which to append results of forecast
+    and returns dataframe with original data and extended index in which 
+    to append results of forecast
 
     Parameters
     ----------
@@ -598,13 +624,16 @@ def make_ready(df,periods):
 
     Returns
     -------
-    out : empty dataframe with time series index for use as graphing axis
+    out : dataframe containing original data and time series index extended to 
+    encapsulate time window of forecast for use as graphing axis
 
     '''
     new_dates = add_periods(df,periods)
     dfi = pd.DataFrame(data = None, index = new_dates)
-    dfnew = pd.DataFrame(data = None, index = df.index.append(dfi.index))
-    return dfnew
+    dfnew = pd.DataFrame(data =None, index = df.index.append(dfi.index))
+
+    fr = pd.merge(dfnew,df, left_index=True, right_index= True, how = 'left')
+    return fr
 
 def graph_forecast(df, series, low, high, point, title = str, y_ax = str, p = 6):
     '''
@@ -641,7 +670,7 @@ def graph_forecast(df, series, low, high, point, title = str, y_ax = str, p = 6)
     ax.plot(dfg.index[-(p+1):], g_point, '.-', color = 'cyan', label='Forecast')
     ax.plot(dfg.index[-(p+1):], g_low, '.--', color = 'c', label='Low')
     ax.plot(dfg.index[-(p+1):], g_high, '.-.', color = 'c', label='High')
-    ax.fill_between(dfg.index[-(p+1):], g_low, g_high, alpha = .4, color = 'c')
+    ax.fill_between(dfg.index[-(p+1):], g_low, g_high, alpha = .4, color = 'c') # shading interval
     ax.grid(axis='y')
     # ax.plot( sdf.date2[-len(y_test):], y_train, label='actual')
     ax.plot(dfg.index[-50:-p], dfg[series][-50:-p], color='cyan', label='Historic')

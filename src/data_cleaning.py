@@ -38,3 +38,12 @@ for i in transformations.keys():
     df[transformations[i]][0] = 0
 
 # s&p500 variable is already in percentage change form
+'''~~~~~~~~~~~~~~~Creating dt formatted date column~~~~~~~~~~~~~~~'''
+
+df['date'] = None
+for i in range(df.shape[0]):
+    df.date[i] = datetime.date(df.year[i],df.month[i],1)
+
+# To set this var to the df index
+df.index = pd.DatetimeIndex(df.date)
+df.drop('date',axis=1, inplace = True)
