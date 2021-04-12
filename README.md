@@ -38,7 +38,15 @@ The other way that Python has made this project much easier to complete is in al
 
 ## Model Output
 
-Coming soon! I'm taking some extra time to make sure my graphs look thier best. 
+I have coded my models in Python for options to either return forecasting outputs in terms of actual values of GDP or in percentage change format; another handy feature to modeling in Python. 
+
+While again this information is based on old data and therefore doesn't actually tell us anything about the future at this point, the output in both formats can be viewed in the following graphs. 
+
+![percentage_change_graph](/images/pc_forecast_graph.png)
+
+![real_value_graph](/images/real_forecast_graph.png)
+
+
 
 ## Project Future
 
