@@ -9,6 +9,7 @@ import datetime
 from dateutil.relativedelta import relativedelta
 import requests
 from secrets import FRED_api_key
+from secrets import eia_api_key
 
 # Loading the data
 df = pd.read_csv('use_data.csv')
@@ -33,21 +34,13 @@ f'https://api.stlouisfed.org/fred/series/search?api_key={FRED_api_key}&search_te
 api_url = f'https://api.stlouisfed.org/fred/series/observations?series_id=UNRATE&api_key={FRED_api_key}&file_type=json'
 data = requests.get(api_url)
 print(data.status_code)
-fewest_updates = 'N/A'
-# Checking for number of new observations available; may need to be done for each series
-api_url = f'https://api.stlouisfed.org/fred/series/observations?series_id=UNRATE&observation_start={next_date}&api_key={FRED_api_key}&file_type=json'
-data = requests.get(api_url)
-if fewest_updates == 'N/A':
-    fewest_updates = len(data['observations'])
-else: 
-    fewest_updates = min(len(f_data['observations']), fewest_updates)
-
 
 next_date = str(df.date[df.shape[0]-1] + relativedelta(months=1))
 FRED_series = ['MCUMFN', 'UNRATE', 'INDPRO','SP500' ,'ASPNHSUS']
 
 fewest_updates = 'N/A' #taking least number of months of new data
 new_data = {}
+# Looping through because of lack of batch call functionality, shouldn't be issue for 5 series
 for series in FRED_series:
     val_list = []
     api_url = f'https://api.stlouisfed.org/fred/series/observations?series_id={trial_series}&observation_start={next_date}&frequency=m&aggregation_method=avg&api_key={FRED_api_key}&file_type=json'
@@ -61,15 +54,47 @@ for series in FRED_series:
         fewest_updates = min(len(data['observations']), fewest_updates)
 
 
-'''
-f'https://sandbox.iexapis.com/stable/stock/{symbol}/quote?token={IEX_CLOUD_API_TOKEN}'
-f'https://sandbox.iexapis.com/stable/stock/market/batch?symbols={symbol_string}&types=quote&token={IEX_CLOUD_API_TOKEN}'
-'''
-
 #########
 #EIA_api#
 #########
 
+# Sample url: f'http://api.eia.gov/series/?series_id=sssssss&api_key={eia_api_key}[&num=][&out=json]'
+# Multiple series can be fetched in a single request by using a semi-colon separated list of 
+# series id's. The number of series in a single request is limited to 100.
+
+# Checking connection
+api_url = f'http://api.eia.gov/series/?api_key={eia_api_key}&series_id=STEO.GDPQXUS.M&out=json'
+data = requests.get(api_url)
+print(data.status_code)
+
+
+api_url = f'http://api.eia.gov/series/?api_key={eia_api_key}&series_id=STEO.GDPQXUS.M&out=json'
+data = requests.get(api_url).json()
+data['series'][0]['data']
+
+# Parsing window of new data from older data and projected data
+newest_relevant = data['series'][0]['lastHistoricalPeriod']
+oldest_relevant = next_date[:4] + next_date[5:7]
+for i in range(len(data['series'][0]['data'])):
+    if data['series'][0]['data'][i][0] == newest_relevant:
+        first_cut = i
+        print(data['series'][0]['data'][i])
+    if data['series'][0]['data'][i][0] == oldest_relevant:
+        second_cut = i + 1
+        print(data['series'][0]['data'][i])
+        break
+
+relevant_data = data['series'][0]['data'][first_cut:second_cut]
+relevant_data.reverse()
+
+for i in range(len(relevant_data)):
+    relevant_data[i] = relevant_data[i][1]
+relevant_data
+
+if fewest_updates > len(relevant_data):
+    fewest_updates = len(relevant_data)
+    
+new_data[data['series'][0]['name']] = relevant_data
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Feature Engineering~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 # Useful for viewing all columns in notebook
 # pd.set_option('display.max_columns', 40)
