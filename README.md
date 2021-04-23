@@ -50,6 +50,9 @@ While again this information is based on old data and therefore doesn't actually
 
 ![real_value_graph](/images/real_forecast_graph.png)
 
+For further context the chart below shows the predictions for each month alongside the historic averages for each month as well as the same month from the previous year. 
+
+![monthly_breakdown](/images/monthly_growth_%.png)
 
 
 ## Project Future
