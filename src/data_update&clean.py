@@ -2,7 +2,7 @@
 # Title: Cleaing data
 # Project: Economic Forecasting
 # Date Created: 1/3/2021
-# Last Updated: 4/19/2021
+# Last Updated: 5/07/2021
 
 import pandas as pd
 import datetime
@@ -10,32 +10,32 @@ from dateutil.relativedelta import relativedelta
 import requests
 from secrets import FRED_api_key
 from secrets import eia_api_key
+def get_update(filepath = 'use_data.csv'):
+    # Loading the data
+    df = pd.read_csv(filepath)
 
-# Loading the data
-df = pd.read_csv('use_data.csv')
-
-# Creating date column
-df['date'] = None
-for i in range(df.shape[0]):
-    df.date[i] = datetime.date(df.year[i],df.month[i],1)
+    # Creating date column
+    df['date'] = None
+    for i in range(df.shape[0]):
+        df.date[i] = datetime.date(df.year[i],df.month[i],1)
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~Updating data from relevant APIs~~~~~~~~~~~~~~~~~~~~~~~~~'''
 ##########
 #FRED_api#
 ##########
+'''
+Documentation:
+https://fred.stlouisfed.org/docs/api/fred/series_observations.html
 
-# Documentation:
-# https://fred.stlouisfed.org/docs/api/fred/series_observations.html
-
-# Below is an example HTTP GET request provided in documentation:
+Below is an example HTTP GET request provided in documentation:
 f'https://api.stlouisfed.org/fred/series/search?api_key={FRED_api_key}&search_text=canada'
 
-# to add: observation_start frequency=m aggregation_method=sum or avg
-# Testing connection
+to add: observation_start frequency=m aggregation_method=sum or avg
+Testing connection
 api_url = f'https://api.stlouisfed.org/fred/series/observations?series_id=UNRATE&api_key={FRED_api_key}&file_type=json'
 data = requests.get(api_url)
 print(data.status_code)
-
+'''
 next_date = str(df.date[df.shape[0]-1] + relativedelta(months=1))
 FRED_series = ['MCUMFN', 'UNRATE', 'INDPRO','SP500' ,'ASPNHSUS']
 
@@ -46,9 +46,14 @@ for series in FRED_series:
     val_list = []
     api_url = f'https://api.stlouisfed.org/fred/series/observations?series_id={series}&observation_start={next_date}&frequency=m&aggregation_method=avg&api_key={FRED_api_key}&file_type=json'
     data = requests.get(api_url).json()
-    for i in range(len(data['observations'])):
-        val_list.append(data['observations'][i]['value'])
-    new_data[series] = val_list
+    if series == 'SP500':
+        for i in range(len(data['observations'])-1):
+            val_list.append(float(data['observations'][i]['value']))
+        new_data[series] = val_list
+    else:
+        for i in range(len(data['observations'])):
+            val_list.append(float(data['observations'][i]['value']))
+        new_data[series] = val_list
     if fewest_updates == 'N/A':
         fewest_updates = len(data['observations'])
     else: 
@@ -95,10 +100,10 @@ for chunk in range(len(data['series'])):
     for i in range(len(data['series'][chunk]['data'])):
         if data['series'][chunk]['data'][i][0] == newest_relevant:
             first_cut = i
-            print(data['series'][chunk]['data'][i],f'n/r for {data['series'][chunk]['name']}')
+            print(data['series'][chunk]['data'][i],f"n/r for {data['series'][chunk]['name']}")
         if data['series'][chunk]['data'][i][0] == oldest_relevant:
             second_cut = i + 1
-            print(data['series'][chunk]['data'][i], f'o/r for {data['series'][chunk]['name']}')
+            print(data['series'][chunk]['data'][i], f"o/r for {data['series'][chunk]['name']}")
             break
 
     relevant_data = data['series'][chunk]['data'][first_cut:second_cut]
