@@ -19,8 +19,62 @@ from secrets import eia_api_key
 # %matplotlib inline # if run in Jupyter
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Updating dataset~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
+def check_for_updates(filepath = 'use_data_updated.csv'):
+    # Loading the data
+    df = pd.read_csv(filepath)
+
+    # Creating date column
+    df['date'] = None
+    for i in range(df.shape[0]):
+        df.date[i] = datetime.date(df.year[i],df.month[i],1)
+    # Checking for connections
+    next_date = str(df.date[df.shape[0]-1] + relativedelta(months=1))
+    FRED_series = ['MCUMFN', 'UNRATE', 'INDPRO','SP500' ,'ASPNHSUS']
+    test_url = f'https://api.stlouisfed.org/fred/series/observations?series_id={FRED_series[0]}&observation_start={next_date}&frequency=m&aggregation_method=avg&api_key={FRED_api_key}&file_type=json'
+    data = requests.get(test_url)
+    if data.status_code != 200:
+        print(f'FRED Connection error: status code {data.status_code}')
+        return 
+
+    test_url = f'http://api.eia.gov/series/?api_key={eia_api_key}&series_id=STEO.GDPQXUS.M&out=json'
+    if data.status_code != 200:
+        print(f'EIA Connection error: status code {data.status_code}')
+        return 
+    
+    
+    latest_month = []
+    latest_year = []
+    for series in FRED_series:
+        val_list = []
+        api_url = f'https://api.stlouisfed.org/fred/series/observations?series_id={series}&observation_start={next_date}&frequency=m&aggregation_method=avg&api_key={FRED_api_key}&file_type=json'
+        data = requests.get(api_url).json()
+        latest_month.append(data['observations'][-1]['date'][5:7])
+        latest_year.append(data['observations'][-1]['date'][:4])
+    api_url = f'http://api.eia.gov/series/?api_key={eia_api_key}&series_id=STEO.GDPQXUS.M;STEO.TREXRUS.M;STEO.KRDRXUS.M;STEO.CONSRUS.M;STEO.I87RXUS.M;STEO.GOVXRUS.M;STEO.TRIMRUS.M;STEO.TOTOGEN_US.M;STEO.ELICP_US.M&out=json'
+    data = requests.get(api_url).json()
+    for chunk in range(len(data['series'])):
+        # Parsing window of new data from older data and projected data
+        latest_month.append(data['series'][chunk]['lastHistoricalPeriod'][4:])
+        latest_year.append(data['series'][chunk]['lastHistoricalPeriod'][:4])
 
 def update_and_clean(filepath = 'use_data.csv'):
+    '''
+    ETL function
+    Loads current local version of data and applies updates from api sources for the number
+    of new updates present in the least updated series, 
+    saves updated version of base data,
+    then applies transformations needed for formatting and feature engineering
+
+    Parameters
+    ----------
+    filepath: location of previous data to load and apply updates to
+    
+    Returns
+    -------
+    saves file with updated base data; i.e. prior to applying feature engineering, transformations
+
+    out : pandas dataframe containing updated cleaned data ready to be passed on to modeling functions
+    '''
     # Loading the data
     df = pd.read_csv(filepath)
 
