@@ -2,7 +2,7 @@
 # Title: VAR functions
 # Project: Economic Forecasting
 # Date Created: 4/8/2021
-# Last Updated: 5/07/2021
+# Last Updated: 5/20/2021
 
 import pandas as pd
 import numpy as np
@@ -45,7 +45,7 @@ def check_for_updates(filepath = 'use_data_updated.csv',silent = False):
     df['date'] = None
     for i in range(df.shape[0]):
         df.date[i] = datetime.date(df.year[i],df.month[i],1)
-        
+
     # Checking for connections
     next_date = str(df.date[df.shape[0]-1] + relativedelta(months=1))
     FRED_series = ['MCUMFN', 'UNRATE', 'INDPRO','SP500' ,'ASPNHSUS']
@@ -893,22 +893,26 @@ def graph_forecast(df, series, low, high, point, title = str, y_ax = str, p = 6)
     
     dfg = make_ready(dfg,p)
     
-    fig, ax = plt.subplots(figsize=(12,6))
+    fig, ax = plt.subplots(figsize=(14,8))
 #     fig.patch.set_facecolor('white')
+    # To set graph frame(area containing axis labels, title)
 #     plt.rcParams['figure.facecolor'] = 'white'
-    ax.patch.set_facecolor('magenta')
-    ax.plot(dfg.index[-(p+1):], g_point, '.-', color = 'cyan', label='Forecast')
-    ax.plot(dfg.index[-(p+1):], g_low, '.--', color = 'c', label='Low')
-    ax.plot(dfg.index[-(p+1):], g_high, '.-.', color = 'c', label='High')
-    ax.fill_between(dfg.index[-(p+1):], g_low, g_high, alpha = .4, color = 'c') # shading interval
+    # to set bachground color of graph
+#     ax.patch.set_facecolor('mintcream')
+    
+    ax.plot(dfg.index[-(p+1):], g_point, '.-', color = 'darkturquoise', label='Forecast')
+    ax.plot(dfg.index[-(p+1):], g_low, '.--', color = 'royalblue', label='Low')
+    ax.plot(dfg.index[-(p+1):], g_high, '.-.', color = 'royalblue', label='High')
+    ax.fill_between(dfg.index[-(p+1):], g_low, g_high, alpha = .4, color = 'aqua') # shading interval
     ax.grid(axis='y')
     # ax.plot( sdf.date2[-len(y_test):], y_train, label='actual')
-    ax.plot(dfg.index[-50:-p], dfg[series][-50:-p], color='cyan', label='Historic')
+    ax.plot(dfg.index[-50:-p], dfg[series][-50:-p], color='magenta', label='Historic')
     ax.set_xlabel('Time in Months',fontsize = 18)
     ax.set_ylabel(y_ax, fontsize = 18)
     ax.set_title(title, fontsize = 22, pad = 8)
 #     ax.legend()
-    ax.legend(shadow=1, fontsize='large',loc=2, facecolor = 'm')
+    ax.legend(shadow=1, fontsize='large',loc=2, facecolor = 'mintcream') # if changing face color of graph
+#     ax.legend(shadow=1, fontsize='large',loc=2)
     for spine in plt.gca().spines.values():
         spine.set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -916,5 +920,5 @@ def graph_forecast(df, series, low, high, point, title = str, y_ax = str, p = 6)
     ax.spines['bottom'].set_visible(False)
     ax.spines['left'].set_visible(False)
     plt.rcParams['lines.linewidth'] = 2
-#     plt.rcParams["font.family"] = "Palatino"
-#     plt.rcParams['axes.facecolor'] = 'black'
+    plt.rcParams["font.family"] = "Palatino"
+    plt.rcParams['axes.facecolor'] = 'aliceblue'
