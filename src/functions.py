@@ -208,9 +208,9 @@ def update_and_clean(filepath = 'use_data.csv'):
     df.drop('date',axis = 1, inplace = True)
     df.to_csv('use_data_updated.csv',index=False)
 
-    #################################################
-    # Update Done: on to cleaning for immediate use #
-    #################################################
+    #######################################################################
+    # Update Done: on to cleaning & feature engineering for immediate use #
+    #######################################################################
 
     df['date'] = None
     for i in range(df.shape[0]):
@@ -826,7 +826,7 @@ def add_periods(df, n, delta = 'months'):
     ----------
     df: dataframe containing variable to forecast with index set to datetime variable
     
-    periods: number of periods out to extend dataset to accomodate forecast
+    n: number of periods out to extend dataset to accomodate forecast
 
     delta: frequency of time variable, string format, defaults to months
 
